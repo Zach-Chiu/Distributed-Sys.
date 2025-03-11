@@ -1,0 +1,17 @@
+syntax = "proto1";
+package smartcity.parking;
+option java_package = "com.smartcity.parking";
+
+service ParkingService {
+    rpc FindAvailableParking (ParkingRequest) returns (ParkingResponse);
+    rpc ReserveParkingSpot (stream ReservationRequest) returns (ReservationResponse) ;  }
+
+message ParkingRequest {  string location = 1 ;   }
+
+message ParkingResponse {  repeated string available_spots = 1 ;  }
+
+message ReservationRequest {  string user_id = 1 ; 
+    string parking_spot_id = 2;   }
+
+message ReservationResponse {  string confirmation_message = 1 ;  }
+
