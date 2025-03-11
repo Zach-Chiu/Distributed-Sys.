@@ -1,0 +1,17 @@
+syntax = "proto3";
+package smartcity.airquality;
+option java_package = "com.smartcity.airquality";
+
+service AirQualityService {
+    rpc MonitorAirQuality (AirQualityRequest) returns (stream AirQualityResponse);
+    rpc AlertAuthorities (stream AlertRequest) returns (AlertResponse) ;  }
+
+message AirQualityRequest {  string location = 1 ;  }
+
+message AirQualityResponse {  string location = 1 ;  
+float pollution_level = 2 ;  }
+
+message AlertRequest {  string location = 1 ; 
+    string alert_message = 2 ;  }
+
+message AlertResponse {  string confirmation = 1 ;  }
