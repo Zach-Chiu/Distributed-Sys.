@@ -1,0 +1,26 @@
+syntax = "proto3";
+package smartcity.emergency;
+option java_package = "com.smartcity.emergency";
+
+service EmergencyService {
+    rpc ReportAccident (stream AccidentReport) returns (EmergencyResponse);
+    rpc NotifyEmergencyTeams (EmergencyRequest) returns (stream EmergencyUpdate);
+}
+
+message AccidentReport {
+    string location = 1;
+    string severity = 2;
+}
+
+message EmergencyRequest {
+    string team_id = 1;
+}
+
+message EmergencyResponse {
+    string status = 1;
+}
+
+message EmergencyUpdate {
+    string update_message = 1;
+}
+
