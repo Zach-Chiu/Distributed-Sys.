@@ -1,0 +1,85 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.smartcity.client;
+
+/**
+ *
+ * @author zachchiu
+ */
+
+import com.smartcity.airquality.*;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+public class AirQualityServiceClient {
+    private final ManagedChannel channel;
+    private final AirQualityServiceGrpc.AirQualityServiceBlockingStub blockingStub;
+    private final AirQualityServiceGrpc.AirQualityServiceStub asyncStub;
+
+    public AirQualityServiceClient(String host, int port) {
+        this.channel = ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
+                .build();
+        this.blockingStub = AirQualityServiceGrpc.newBlockingStub(channel);
+        this.asyncStub = AirQualityServiceGrpc.newStub(channel);
+    }
+
+    public void monitorAirQuality(String location) {
+        AirQualityRequest request = AirQualityRequest.newBuilder().setLocation(location).build();
+        blockingStub.monitorAirQuality(request)
+                .forEachRemaining(response -> System.out.println("Pollution Level at " + response.getLocation() + ": " + response.getPollutionLevel()));
+    }
+
+    public void alertAuthorities(String location, String... messages) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        StreamObserver<AlertRequest> requestObserver = asyncStub.alertAuthorities(new StreamObserver<AlertResponse>() {
+            @Override
+            public void onNext(AlertResponse response) {
+                System.out.println(response.getConfirmation());
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                System.err.println("Error in alerting authorities: " + t.getMessage());
+                latch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                System.out.println("All alerts sent successfully.");
+                latch.countDown();
+            }
+        });
+
+        for (String message : messages) {
+            requestObserver.onNext(AlertRequest.newBuilder()
+                    .setLocation(location)
+                    .setAlertMessage(message)
+                    .build());
+        }
+        requestObserver.onCompleted();
+        latch.await(3, TimeUnit.SECONDS);
+    }
+
+    public void shutdown() throws InterruptedException {
+        channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        AirQualityServiceClient client = new AirQualityServiceClient("localhost", 50051);
+
+        System.out.println("🌍 監測空氣品質");
+        client.monitorAirQuality("City Center");
+
+        System.out.println("\n⚠️ 發送空氣警報");
+        client.alertAuthorities("City Center", "High pollution level detected", "Stay indoors!");
+
+        client.shutdown();
+    }
+}
