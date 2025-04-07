@@ -71,7 +71,7 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
 
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        alertMessageInput.setText("Alter message");
+        alertMessageInput.setText("Alert message");
         alertMessageInput.setName(""); // NOI18N
         alertMessageInput.setPreferredSize(new java.awt.Dimension(200, 50));
         alertMessageInput.addActionListener(new java.awt.event.ActionListener() {
@@ -91,7 +91,7 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
         });
         jPanel1.add(checkPollutionButton, new org.netbeans.lib.awtextra.AbsoluteConstraints(220, 10, -1, -1));
 
-        sendAlertButton.setText("Send Alter");
+        sendAlertButton.setText("Send Alert");
         sendAlertButton.setName(""); // NOI18N
         sendAlertButton.setPreferredSize(new java.awt.Dimension(120, 30));
         sendAlertButton.addActionListener(new java.awt.event.ActionListener() {
@@ -140,7 +140,6 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
         });
         jPanel2.add(findParkingButton, new org.netbeans.lib.awtextra.AbsoluteConstraints(210, 10, 130, -1));
 
-        userIdInput.setEditable(false);
         userIdInput.setText("User ID");
         userIdInput.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -160,7 +159,6 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
         spotIdInput.setText("Spot ID");
         jPanel2.add(spotIdInput, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 110, 180, 30));
 
-        parkingOutput.setEditable(false);
         parkingOutput.setColumns(20);
         parkingOutput.setRows(5);
         jScrollPane1.setViewportView(parkingOutput);
@@ -203,15 +201,14 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
         });
         jPanel3.add(reportAccidentButton, new org.netbeans.lib.awtextra.AbsoluteConstraints(220, 10, 130, -1));
 
-        accidentSeverityInput.setText("Accident serverity Input");
+        accidentSeverityInput.setText("Accident severity input");
         jPanel3.add(accidentSeverityInput, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 50, 180, 30));
 
-        emergencyOutput.setEditable(false);
         emergencyOutput.setColumns(20);
         emergencyOutput.setRows(5);
         jScrollPane3.setViewportView(emergencyOutput);
 
-        jPanel3.add(jScrollPane3, new org.netbeans.lib.awtextra.AbsoluteConstraints(380, 10, -1, 130));
+        jPanel3.add(jScrollPane3, new org.netbeans.lib.awtextra.AbsoluteConstraints(380, 10, 240, 130));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -220,7 +217,7 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
             .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 637, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
@@ -248,32 +245,29 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
         // TODO add your handling code here:
         String location = parkingLocationInput.getText().trim();
         if (location.isEmpty()) {
-            parkingOutput.setText("請輸入地點。");
+            parkingOutput.setText("Please enter the Location。");
             return;
         }
 
         try {
-            String result;
-            result = parkingClient.findAvailableParking(location);
+            String result = parkingClient.findAvailableParking(location);
             parkingOutput.setText(result);
         } catch (Exception e) {
-            parkingOutput.setText("錯誤：" + e.getMessage());
+            parkingOutput.setText("error：" + e.getMessage());
         }
     }                                                 
 
     private void reportAccidentButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                     
         // TODO add your handling code here:
         String location = accidentLocationInput.getText().trim();
-        String severity = accidentLocationInput.getText().trim();
+        String severity = accidentSeverityInput.getText().trim();
 
         if (location.isEmpty() || severity.isEmpty()) {
             emergencyOutput.setText("Please enter the accident location and severity。");
             return;
         }
-
         try {
-            String result;
-            result = emergencyClient.reportAccident(location, severity);
+            String result = emergencyClient.reportAccident(location, severity);
             emergencyOutput.setText(result);
         } catch (Exception e) {
             emergencyOutput.setText("error：" + e.getMessage());
@@ -290,13 +284,12 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
 
     private void sendAlertButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                
         // TODO add your handling code here:
-        // ➤ Call AirQuality 發送警報
+        // ➤ Call AirQuality 
         String alert = alertMessageInput.getText().trim();
         if (alert.isEmpty()) {
             airQualityResultTextArea.setText("Please enter the alert content。");
             return;
         }
-
         try {
             String result = airQualityClient.sendAlert(alert);
             airQualityResultTextArea.setText(result);
@@ -312,7 +305,6 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
             emergencyOutput.setText("Please enter the group ID。");
             return;
         }
-
         try {
             String result = emergencyClient.notifyTeam(teamId);
             emergencyOutput.setText(result);
