@@ -285,17 +285,23 @@ public class SmartCityGUI1 extends javax.swing.JFrame {
     private void sendAlertButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                
         // TODO add your handling code here:
         // ➤ Call AirQuality 
-        String alert = alertMessageInput.getText().trim();
-        if (alert.isEmpty()) {
-            airQualityResultTextArea.setText("Please enter the alert content。");
-            return;
-        }
-        try {
-            String result = airQualityClient.sendAlert(alert);
-            airQualityResultTextArea.setText(result);
-        } catch (Exception e) {
-            airQualityResultTextArea.setText("error：" + e.getMessage());
-        }
+          String location = airQualityLocationInput.getText().trim();
+    String message = alertMessageInput.getText().trim();
+
+    if (location.isEmpty() || message.isEmpty()) {
+        airQualityResultTextArea.setText("⚠️ Please enter both location and alert message.");
+        return;
+    }
+
+    try {
+        // Call Client Streaming RPC
+        String result = airQualityClient.sendAlert(location,  "PM2.5 is overload", 
+    "please waer mask when you go out!!","The Environmental Protection Agency has received a notification!!");
+        airQualityResultTextArea.setText(result);
+
+    } catch (Exception e) {
+        airQualityResultTextArea.setText(" Error sending alert: " + e.getMessage());
+    }
     }                                               
 
     private void notifyEmergencyButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                      
