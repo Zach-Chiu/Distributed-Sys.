@@ -8,77 +8,115 @@ package com.smartcity.client;
  *
  * @author zachchiu
  */
-
 import com.smartcity.airquality.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 
+import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceInfo;
+import java.io.IOException;
+import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class AirQualityServiceClient {
-    private final ManagedChannel channel;
-    private final AirQualityServiceGrpc.AirQualityServiceBlockingStub blockingStub;
-    private final AirQualityServiceGrpc.AirQualityServiceStub asyncStub;
 
-    public AirQualityServiceClient(String host, int port) {
-        this.channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
-                .build();
-        this.blockingStub = AirQualityServiceGrpc.newBlockingStub(channel);
-        this.asyncStub = AirQualityServiceGrpc.newStub(channel);
+    private ManagedChannel channel;
+    private AirQualityServiceGrpc.AirQualityServiceBlockingStub blockingStub;
+    private AirQualityServiceGrpc.AirQualityServiceStub asyncStub;
+
+    public AirQualityServiceClient() {
+        try {
+            // Scanning Services Using JmDNS
+            JmDNS jmdns = JmDNS.create(InetAddress.getLocalHost());
+            ServiceInfo serviceInfo = jmdns.getServiceInfo("_airquality._tcp.local.", "AirQualityService");
+
+            if (serviceInfo == null) {
+                System.err.println("AirQualityService not found via JmDNS.");
+                return;
+            }
+
+            String host = serviceInfo.getHostAddresses()[0];
+            int port = serviceInfo.getPort();
+
+            System.out.println(" AirQualityService discovered via JmDNS at " + host + ":" + port);
+
+            //  Connection Settings
+            channel = ManagedChannelBuilder.forAddress(host, port)
+                    .usePlaintext()
+                    .build();
+
+            blockingStub = AirQualityServiceGrpc.newBlockingStub(channel);
+            asyncStub = AirQualityServiceGrpc.newStub(channel);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void monitorAirQuality(String location) {
+    public String checkPollution(String location) {
+        StringBuilder result = new StringBuilder();
         AirQualityRequest request = AirQualityRequest.newBuilder().setLocation(location).build();
+
         blockingStub.monitorAirQuality(request)
-                .forEachRemaining(response -> System.out.println("Pollution Level at " + response.getLocation() + ": " + response.getPollutionLevel()));
+                .forEachRemaining(response -> {
+                    result.append("Pollution Level at ").append(response.getLocation())
+                            .append(": ").append(response.getPollutionLevel()).append("\n");
+                });
+
+        return result.toString();
     }
 
-    public void alertAuthorities(String location, String... messages) throws InterruptedException {
+    public String sendAlert(String location, String... messages) throws InterruptedException {
+        StringBuilder result = new StringBuilder();
         CountDownLatch latch = new CountDownLatch(1);
+
         StreamObserver<AlertRequest> requestObserver = asyncStub.alertAuthorities(new StreamObserver<AlertResponse>() {
             @Override
             public void onNext(AlertResponse response) {
-                System.out.println(response.getConfirmation());
+                result.append(response.getConfirmation()).append("\n");
             }
 
             @Override
             public void onError(Throwable t) {
-                System.err.println("Error in alerting authorities: " + t.getMessage());
+                result.append("Error in alerting authorities: ").append(t.getMessage()).append("\n");
                 latch.countDown();
             }
 
             @Override
             public void onCompleted() {
-                System.out.println("All alerts sent successfully.");
+                result.append("All alerts sent successfully.\n");
                 latch.countDown();
             }
         });
 
-        for (String message : messages) {
+        for (String msg : messages) {
             requestObserver.onNext(AlertRequest.newBuilder()
                     .setLocation(location)
-                    .setAlertMessage(message)
+                    .setAlertMessage(msg)
                     .build());
         }
+
         requestObserver.onCompleted();
         latch.await(3, TimeUnit.SECONDS);
+        return result.toString();
     }
 
     public void shutdown() throws InterruptedException {
-        channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        if (channel != null) {
+            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        }
     }
 
     public static void main(String[] args) throws InterruptedException {
-        AirQualityServiceClient client = new AirQualityServiceClient("localhost", 50051);
+        AirQualityServiceClient client = new AirQualityServiceClient();
 
-        System.out.println("🌍 監測空氣品質");
-        client.monitorAirQuality("City Center");
+        System.out.println(" Monitoring air quality");
+        System.out.println(client.checkPollution("City Center"));
 
-        System.out.println("\n⚠️ 發送空氣警報");
-        client.alertAuthorities("City Center", "High pollution level detected", "Stay indoors!");
+        System.out.println("\n Sending alerts");
+        System.out.println(client.sendAlert("City Center", "PM2.5 exceeds threshold", "Avoid outdoor activities"));
 
         client.shutdown();
     }
