@@ -15,17 +15,21 @@ import io.grpc.ServerBuilder;
 
 public class ParkingServer {
     public static void main(String[] args) throws Exception {
-        // ✅ 建立攔截器
+        // Create an API Key Interceptor
+        // This will help check if the client has permission to use the reserve service
         ApiKeyInterceptor apiKeyInterceptor = new ApiKeyInterceptor();
 
-        // ✅ 正確使用 intercept() 加入攔截器
-        Server server = ServerBuilder.forPort(50053)
-                .addService(new ParkingServiceImpl())                // ✅ 加入 ParkingService
-                .intercept(apiKeyInterceptor)                       // ✅ 加入 API Key 驗證攔截器
-                .build();
+        // Build and start the gRPC server
+        // .addService() adds the parking service logic
+        // .intercept() adds the API Key security check
+        Server server = ServerBuilder.forPort(50053)                // Server will listen on port 50053
+                .addService(new ParkingServiceImpl())               // Add the ParkingService implementation
+                .intercept(apiKeyInterceptor)                       // Add the API key interceptor
+                .build();                                           // Finish building the server
 
-        server.start();
-        System.out.println("✅ Smart Parking Server started on port 50053 with API Key validation");
-        server.awaitTermination();
+        server.start();                                             // Start the gRPC server
+        System.out.println(" Smart Parking Server started on port 50053 with API Key validation");
+        
+        server.awaitTermination();                                   // Keep the server running and wait for shutdown
     }
 }
