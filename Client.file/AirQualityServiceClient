@@ -21,76 +21,79 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class AirQualityServiceClient {
-
+    // Create a gRPC channel and two stubs: blocking and async
     private ManagedChannel channel;
     private AirQualityServiceGrpc.AirQualityServiceBlockingStub blockingStub;
     private AirQualityServiceGrpc.AirQualityServiceStub asyncStub;
-
+    
+    // Constructor: Use JmDNS to find the AirQuality gRPC service automatically
     public AirQualityServiceClient() {
         try {
-            // Scanning Services Using JmDNS
+            // Use JmDNS to search for the air quality service in the local network
             JmDNS jmdns = JmDNS.create(InetAddress.getLocalHost());
+            // Look for a service with this type and name
             ServiceInfo serviceInfo = jmdns.getServiceInfo("_airquality._tcp.local.", "AirQualityService");
-
+            // If service not found, print error and return
             if (serviceInfo == null) {
                 System.err.println("AirQualityService not found via JmDNS.");
                 return;
             }
-
+            // Get host IP and port of the discovered service
             String host = serviceInfo.getHostAddresses()[0];
             int port = serviceInfo.getPort();
 
             System.out.println(" AirQualityService discovered via JmDNS at " + host + ":" + port);
 
-            //  Connection Settings
+            // Create gRPC channel with the discovered host and port
             channel = ManagedChannelBuilder.forAddress(host, port)
                     .usePlaintext()
                     .build();
-
+            // Create blocking and async stubs to call gRPC methods
             blockingStub = AirQualityServiceGrpc.newBlockingStub(channel);
             asyncStub = AirQualityServiceGrpc.newStub(channel);
 
         } catch (IOException e) {
-            e.printStackTrace();
+            e.printStackTrace();        // Print error if JmDNS fails
         }
     }
-
+    // 1. Server streaming RPC: Ask the server to monitor pollution at a location
     public String checkPollution(String location) {
         StringBuilder result = new StringBuilder();
+        // Build a request message with the user-provided location
         AirQualityRequest request = AirQualityRequest.newBuilder().setLocation(location).build();
-
+        //  Call server method: it will send multiple PollutionResponse messages
         blockingStub.monitorAirQuality(request)
                 .forEachRemaining(response -> {
                     result.append("Pollution Level at ").append(response.getLocation())
                             .append(": ").append(response.getPollutionLevel()).append("\n");
                 });
 
-        return result.toString();
+        return result.toString();       // Return the combined results
     }
-
+    // 2. Client streaming RPC: Send multiple alert messages to the server
     public String sendAlert(String location, String... messages) throws InterruptedException {
         StringBuilder result = new StringBuilder();
         CountDownLatch latch = new CountDownLatch(1);
-
+        // Create a client stream to send alerts
         StreamObserver<AlertRequest> requestObserver = asyncStub.alertAuthorities(new StreamObserver<AlertResponse>() {
             @Override
             public void onNext(AlertResponse response) {
                 result.append(response.getConfirmation()).append("\n");
             }
-
+            // Called when there is an error
             @Override
             public void onError(Throwable t) {
                 result.append("Error in alerting authorities: ").append(t.getMessage()).append("\n");
                 latch.countDown();
             }
-
+            // Called when the stream is completed successfully
             @Override
             public void onCompleted() {
                 result.append("All alerts sent successfully.\n");
                 latch.countDown();
             }
         });
-
+        // Send multiple alert messages (loop through input)
         for (String msg : messages) {
             requestObserver.onNext(AlertRequest.newBuilder()
                     .setLocation(location)
@@ -98,11 +101,12 @@ public class AirQualityServiceClient {
                     .build());
         }
 
-        requestObserver.onCompleted();
-        latch.await(3, TimeUnit.SECONDS);
-        return result.toString();
+        requestObserver.onCompleted();          // Notify the server no more messages will be sent
+        latch.await(3, TimeUnit.SECONDS);       // Wait for response (max 3 seconds)
+        
+        return result.toString();               // Return the response
     }
-
+    // Close the gRPC channel when done
     public void shutdown() throws InterruptedException {
         if (channel != null) {
             channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
